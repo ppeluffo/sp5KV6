@@ -10,6 +10,9 @@
 // --------------------------------------------------------------------------------
 
 #include "drv_i2c_sp5K.h"
+#ifdef DEBUG_I2C
+#include "l_printf.h"
+#endif
 
 static void pvI2C_setBitRate(int bitrateKHz);
 static void pvI2C_sendStart(void);
@@ -32,7 +35,7 @@ void drv_I2C_init(void)
 	pvI2C_setBitRate(100);
 }
 //------------------------------------------------------------------------------------
-int drv_I2C_master_write ( const uint8_t devAddress, const uint8_t devAddressLength, const uint16_t byteAddress, char *pvBuffer, size_t xBytes  )
+int drv_I2C_master_write ( const uint8_t slaveAddress, const uint8_t dataLength, const uint16_t dataAddress, char *pvBuffer, size_t xBytes  )
 {
 
 uint8_t tryes = 0;
@@ -44,7 +47,7 @@ int xReturn = -1;
 i2c_retry:
 
 #ifdef DEBUG_I2C
-	xprintf_P( PSTR("I2C_MW0: 0x%02x,0x%02x,0x%02x,0x%02x\r\n\0"),devAddress,devAddressLength, (u16)(byteAddress), xBytes );
+	xprintf_P( PSTR("I2C_MW0: 0x%02x,0x%02x,0x%02x,0x%02x\r\n\0"),slaveAddress,dataLength, (uint16_t)(dataAddress), xBytes );
 #endif
 
 	if (tryes++ >= I2C_MAXTRIES) goto i2c_quit;
@@ -61,7 +64,7 @@ i2c_retry:
 	if ( (i2c_status != TW_START) && (i2c_status != TW_REP_START) ) goto i2c_quit;
 
 	// Pass2) (SLA_W) Send slave address. Debo recibir 0x18 ( SLA_ACK )
-	txbyte = devAddress | TW_WRITE;
+	txbyte = slaveAddress | TW_WRITE;
 	pvI2C_sendByte(txbyte);
 	if ( !pvI2C_waitForComplete() )
 		goto i2c_quit;
@@ -77,8 +80,8 @@ i2c_retry:
 	// Pass3) Envio la direccion fisica donde comenzar a escribir.
 	// En las memorias es una direccion de 2 bytes.En el DS1344 o el BusController es de 1 byte
 	// Envio primero el High 8 bit i2c address. Debo recibir 0x28 ( DATA_ACK)
-	if ( devAddressLength == 2 ) {
-		txbyte = (byteAddress) >> 8;
+	if ( dataLength == 2 ) {
+		txbyte = (dataAddress) >> 8;
 		pvI2C_sendByte(txbyte);
 		if ( !pvI2C_waitForComplete() )
 			goto i2c_quit;
@@ -90,8 +93,8 @@ i2c_retry:
 	}
 
 	// Envio el Low 8 byte i2c address.
-	if ( devAddressLength >= 1 ) {
-		txbyte = (byteAddress) & 0x00FF;
+	if ( dataLength >= 1 ) {
+		txbyte = (dataAddress) & 0x00FF;
 		pvI2C_sendByte(txbyte);
 		if ( !pvI2C_waitForComplete() )
 			goto i2c_quit;
@@ -127,11 +130,15 @@ i2c_quit:
 	if (xReturn == -1)
 		pvI2C_disable();
 
+#ifdef DEBUG_I2C
+	xprintf_P( PSTR("I2C_MW5 xReturn: 0x%02x\r\n\0"),xReturn );
+#endif
+
 	return(xReturn);
 
 }
 //------------------------------------------------------------------------------------
-int drv_I2C_master_read  ( const uint8_t devAddress, const uint8_t devAddressLength, const uint16_t byteAddress, char *pvBuffer, size_t xBytes  )
+int drv_I2C_master_read  ( const uint8_t slaveAddress, const uint8_t dataLength, const uint16_t dataAddress, char *pvBuffer, size_t xBytes  )
 {
 	// En el caso del ADC, el read no lleva la parte de mandar la SLA+W. !!!!!
 
@@ -144,7 +151,7 @@ uint8_t i;
 i2c_retry:
 
 #ifdef DEBUG_I2C
-	xprintf_P( PSTR("I2C_MR0: 0x%02x,0x%02x,0x%02x,0x%02x\r\n\0"),devAddress,devAddressLength, (u16)(byteAddress), xBytes );
+	xprintf_P( PSTR("I2C_MR0: 0x%02x,0x%02x,0x%02x,0x%02x\r\n\0"),slaveAddress,dataLength, (uint16_t)(dataAddress), xBytes );
 #endif
 
 	if (tryes++ >= I2C_MAXTRIES) goto i2c_quit;
@@ -162,12 +169,12 @@ i2c_retry:
 
 #ifdef SP5KV5_3CH
 	// En el caso del ADC, el read no lleva la parte de mandar la SLA+W. !!!!!
-	if ( devAddress == ADS7828_ADDR)
+	if ( slaveAddress == ADS7828_ADDR)
 		goto SRL_R;
 #endif /* SP5KV5_3CH */
 
 	// Pass2) (SLA_W) Send slave address. Debo recibir 0x18 ( SLA_ACK )
-	txbyte = devAddress | TW_WRITE;
+	txbyte = slaveAddress | TW_WRITE;
 	pvI2C_sendByte(txbyte);
 	if ( !pvI2C_waitForComplete() )
 		goto i2c_quit;
@@ -181,8 +188,8 @@ i2c_retry:
 	// Pass3) Envio la direccion fisica donde comenzar a escribir.
 	// En las memorias es una direccion de 2 bytes.En el DS1344 o el BusController es de 1 byte
 	// Envio primero el High 8 bit i2c address. Debo recibir 0x28 ( DATA_ACK)
-	if ( devAddressLength == 2 ) {
-		txbyte = (byteAddress) >> 8;
+	if ( dataLength == 2 ) {
+		txbyte = (dataAddress) >> 8;
 		pvI2C_sendByte(txbyte);
 		if ( !pvI2C_waitForComplete() )
 			goto i2c_quit;
@@ -194,8 +201,8 @@ i2c_retry:
 	}
 
 	// Envio el Low 8 byte i2c address.
-	if ( devAddressLength >= 1 ) {
-		txbyte = (byteAddress) & 0x00FF;
+	if ( dataLength >= 1 ) {
+		txbyte = (dataAddress) & 0x00FF;
 		pvI2C_sendByte(txbyte);
 		if ( !pvI2C_waitForComplete() )
 			goto i2c_quit;
@@ -205,7 +212,6 @@ i2c_retry:
 #endif
 		if (i2c_status != TW_MT_DATA_ACK) goto i2c_quit;
 	}
-
 
 	// Pass4) REPEATED START. Debo recibir 0x10 ( REPEATED_START)
 	pvI2C_sendStart();
@@ -220,7 +226,7 @@ i2c_retry:
 
 SRL_R:
 	// Pass5) (SLA_R) Send slave address + READ. Debo recibir un 0x40 ( SLA_R ACK)
-	txbyte = devAddress | TW_READ;
+	txbyte = slaveAddress | TW_READ;
 	pvI2C_sendByte(txbyte);
 	if ( !pvI2C_waitForComplete() )
 		goto i2c_quit;
@@ -251,10 +257,12 @@ SRL_R:
 		goto i2c_quit;
 	i2c_status = pvI2C_getStatus();
 #ifdef DEBUG_I2C
-	xprintf_P( PSTR("I2C_MR6(%d): 0x%02x,0x%02x\r\n\0"),i,TWDR,i2c_status );
+	xprintf_P( PSTR("I2C_MR7(%d): 0x%02x,0x%02x\r\n\0"),i,TWDR,i2c_status );
 #endif
 	if (i2c_status != TW_MR_DATA_NACK) goto i2c_quit;
 	*pvBuffer++ = TWDR;
+
+	*pvBuffer = '\0';
 
 	// I2C read OK.
 	xReturn = xBytes;
@@ -275,6 +283,10 @@ i2c_quit:
 //	}
 
 //	FreeRTOS_write( &pdUART1, debug_printfBuff, sizeof(debug_printfBuff) );
+#ifdef DEBUG_I2C
+	xprintf_P( PSTR("I2C_MR8 xReturn: 0x%02x\r\n\0"),xReturn );
+#endif
+
 	return(xReturn);
 
 }
@@ -341,7 +353,7 @@ static void pvI2C_sendByte( uint8_t data)
 static void pvI2C_readByte( uint8_t ackFlag)
 {
 	// begin receive over i2c
-	if( ackFlag )
+	if( ackFlag == ACK)
 	{
 		// ackFlag = TRUE: ACK the recevied data
 		TWCR = (1 << TWEA) | (1 << TWINT) | (1 << TWEN);

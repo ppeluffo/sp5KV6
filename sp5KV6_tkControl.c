@@ -20,7 +20,6 @@ void tkControl(void * pvParameters)
 {
 
 ( void ) pvParameters;
-uint8_t a = 0;
 
 	// Aqui solo controlo la terminal por lo que no me importa tanto el watchdog.
 	// Lo controlo en LedTiltWdg
@@ -39,8 +38,7 @@ uint8_t a = 0;
  	   	// Espero 1 segundo para revisar todo.
         vTaskDelay( ( TickType_t)( 1000 / portTICK_RATE_MS ) );
 
-        PORTC ^= 1 << 2;
-        // Reviso los sistemas perifericos.
+         // Reviso los sistemas perifericos.
         pv_check_wdg();
 
     }
@@ -52,25 +50,15 @@ static void pv_check_wdg(void)
 	wdt_reset();
 }
 //------------------------------------------------------------------------------------
-//------------------------------------------------------------------------------------
 // FUNCIONES DE INIT
 //------------------------------------------------------------------------------------
 static void pv_tkControl_init(void)
 {
 
-	vTaskDelay( ( TickType_t)( 500 / portTICK_RATE_MS ) );
-
-//	MCP_init(0);				// Esto prende la terminal.
-
+	// Habilito el buffer serial
 	UARTCTL_DDR |= (_BV(UARTCTL));
 	UARTCTL_PORT &= ~(1 << UARTCTL);
 
-	DDRC |= (_BV(2));
-	DDRC |= (_BV(3));
-
-//	IO_term_pwr_on();
-//	f_terminalStatus = T_PRENDIDA;
-//	pub_uarts_ctl(TERM_PRENDER);
 
 	// Habilito al resto de las tareas a arrancar.
 	startTask = true;

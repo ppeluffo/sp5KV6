@@ -27,8 +27,8 @@
 #define NACK 	1
 
 void drv_I2C_init(void);
-int drv_I2C_master_write ( const uint8_t devAddress, const uint8_t devAddressLength, const uint16_t byteAddress, char *pvBuffer, size_t xBytes );
-int drv_I2C_master_read  ( const uint8_t devAddress, const uint8_t devAddressLength, const uint16_t byteAddress, char *pvBuffer, size_t xBytes );
+int drv_I2C_master_write ( const uint8_t slaveAddress, const uint8_t dataLength, const uint16_t dataAddress, char *pvBuffer, size_t xBytes );
+int drv_I2C_master_read  ( const uint8_t slaveAddress, const uint8_t dataLength, const uint16_t dataAddress, char *pvBuffer, size_t xBytes );
 
 //#define DEBUG_I2C
 

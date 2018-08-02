@@ -18,7 +18,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "../FRTOS-IO/frtos_io.h"
+#include "frtos_io.h"
 
 void xprintf_init(void);
 int xprintf_P( PGM_P fmt, ...);

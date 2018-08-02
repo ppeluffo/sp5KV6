@@ -14,6 +14,7 @@ static void pv_snprintfP_OK(void );
 static void pv_snprintfP_ERR(void);
 
 static void pv_cmd_rwEE(uint8_t cmd_mode );
+static void pv_cmd_rwRTC(uint8_t cmd_mode );
 
 //----------------------------------------------------------------------------------------
 // FUNCIONES DE CMDMODE
@@ -31,7 +32,8 @@ static void cmdConfigFunction(void);
 #define RD_CMD 1
 
 static usuario_t tipo_usuario;
-
+char buffer[32];
+RtcTimeType_t rtc;
 //----------------------------------------------------------------------------------------
 void tkCmd(void * pvParameters)
 {
@@ -60,6 +62,8 @@ uint8_t ticks;
 	frtos_ioctl( fdRS232,ioctl_SET_TIMEOUT, &ticks );
 
 	tipo_usuario = USER_TECNICO;
+
+	RTC_start(&rtc);
 
 	xprintf_P( PSTR("starting tkCmd..\r\n\0"));
 
@@ -192,9 +196,16 @@ static void cmdReadFunction(void)
 	FRTOS_CMD_makeArgv();
 
 	// EE
-	// write ee pos string
+	// read ee pos string
 	if (!strcmp_P( strupr(argv[1]), PSTR("EE\0")) && ( tipo_usuario == USER_TECNICO) ) {
 		pv_cmd_rwEE(RD_CMD);
+		return;
+	}
+
+	// RTC
+	// read rtc
+	if (!strcmp_P( strupr(argv[1]), PSTR("RTC\0")) ) {
+		pv_cmd_rwRTC(RD_CMD);
 		return;
 	}
 
@@ -222,6 +233,13 @@ static void cmdWriteFunction(void)
 		return;
 	}
 
+	// RTC
+	// write rtc YYMMDDhhmm
+	if (!strcmp_P( strupr(argv[1]), PSTR("RTC\0")) ) {
+		pv_cmd_rwRTC(WR_CMD);
+		return;
+	}
+
 	// CMD NOT FOUND
 	xprintf_P( PSTR("ERROR\r\nCMD NOT DEFINED\r\n\0"));
 	return;
@@ -240,13 +258,11 @@ static void pv_snprintfP_ERR(void)
 	xprintf_P( PSTR("error\r\n\0"));
 }
 //------------------------------------------------------------------------------------
-
 static void pv_cmd_rwEE(uint8_t cmd_mode )
 {
 
 int xBytes = 0;
 uint8_t length = 0;
-char buffer[32];
 char *p;
 
 	// read ee {pos} {lenght}
@@ -276,6 +292,33 @@ char *p;
 			xprintf_P(PSTR("ERROR: I2C:EE:pv_cmd_rwEE\r\n\0"));
 
 		( xBytes > 0 ) ? pv_snprintfP_OK() : 	pv_snprintfP_ERR();
+		return;
+	}
+
+}
+//------------------------------------------------------------------------------------
+static void pv_cmd_rwRTC(uint8_t cmd_mode )
+{
+
+int8_t xBytes;
+
+	if ( cmd_mode == WR_CMD ) {
+		RTC_str2rtc(argv[2], &rtc);			// Convierto el string YYMMDDHHMM a RTC.
+		xBytes = RTC_write_dtime(&rtc);		// Grabo el RTC
+		if ( xBytes == -1 )
+			xprintf_P(PSTR("ERROR: I2C:RTC:pv_cmd_rwRTC\r\n\0"));
+
+		( xBytes > 0)? pv_snprintfP_OK() : 	pv_snprintfP_ERR();
+		return;
+	}
+
+	if ( cmd_mode == RD_CMD ) {
+		xBytes = RTC_read_dtime(&rtc);
+		if ( xBytes == -1 )
+			xprintf_P(PSTR("ERROR: I2C:RTC:pv_cmd_rwRTC\r\n\0"));
+
+		RTC_rtc2str(buffer,&rtc);
+		xprintf_P( PSTR("%s\r\n\0"), buffer );
 		return;
 	}
 

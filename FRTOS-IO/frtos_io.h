@@ -19,7 +19,6 @@
 #include "task.h"
 #include "semphr.h"
 
-
 // Identificador de los file descriptor.
 typedef enum {
 	fdRS232 = 1,
@@ -42,9 +41,9 @@ typedef struct {
 	file_descriptor_t fd;
 	SemaphoreHandle_t xBusSemaphore;		//
 	uint8_t xBlockTime;						// ticks to block in read operations. Set by ioctl
-	uint8_t devAddress;
-	uint8_t byteAddressLength;
-	uint16_t byteAddress;
+	uint8_t slaveAddress;
+	uint16_t dataAddress;
+	uint8_t dataLength;
 	uint8_t i2c_error_code;
 
 } periferico_i2c_port_t;
@@ -62,9 +61,9 @@ StaticSemaphore_t I2C_xMutexBuffer;
 #define ioctl_UART_CLEAR_RX_BUFFER		4
 #define ioctl_UART_CLEAR_TX_BUFFER		5
 
-#define ioctl_I2C_SET_DEVADDRESS		6
-#define ioctl_I2C_SET_BYTEADDRESS		7
-#define ioctl_I2C_SET_BYTEADDRESSLENGTH	8
+#define ioctl_I2C_SET_SLAVE_ADDRESS		6
+#define ioctl_I2C_SET_DATA_ADDRESS		7
+#define ioctl_I2C_SET_DATA_LENGTH		8
 #define ioctl_I2C_GET_LAST_ERROR		9
 
 #define I2C_OK			0

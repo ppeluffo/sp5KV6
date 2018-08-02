@@ -226,7 +226,8 @@ xTimeOutType xTimeOut;
 			taskYIELD();
 		} else {
 			// Espero xTicksToWait antes de volver a chequear
-			vTaskDelay( ( TickType_t)( xTicksToWait ) );
+			//vTaskDelay( ( TickType_t)( xTicksToWait ) );
+			vTaskDelay( ( TickType_t)( 10 / portTICK_PERIOD_MS ) );
 		}
 
 		// Time out has expired ?
@@ -261,11 +262,11 @@ int frtos_i2c_write( periferico_i2c_port_t *xI2c, const char *pvBuffer, const ui
 int xReturn = 0U;
 
 
-#ifdef DEBUG_I2C
-	xprintf_P( PSTR("FRTOS_I2C_WR: 0x%02x,0x%02x,0x%02x,0x%02x\r\n\0"), &xI2c->devAddress, &xI2c->->byteAddressLength, &xI2c->->byteAddress, xBytes);
-#endif
+//#ifdef DEBUG_I2C
+//	xprintf_P( PSTR("FRTOS_I2C_WR: 0x%02x,0x%02x,0x%02x,0x%02x\r\n\0"), &xI2c->devAddress, &xI2c->->dataLength, &xI2c->->dataAddress, xBytes);
+//#endif
 
-	if ( ( xReturn = drv_I2C_master_write(xI2c->devAddress, xI2c->byteAddressLength, xI2c->byteAddress, (char *)pvBuffer, xBytes) ) > 0 ) {
+	if ( ( xReturn = drv_I2C_master_write(xI2c->slaveAddress, xI2c->dataLength, xI2c->dataAddress, (char *)pvBuffer, xBytes) ) > 0 ) {
 		xI2c->i2c_error_code = I2C_OK;
 	} else {
 		// Error de escritura indicado por el driver.
@@ -284,9 +285,9 @@ uint16_t *p;
 
 	p = pvValue;
 
-#ifdef DEBUG_I2C
-	xprintf_P( PSTR("FRTOS_I2C_IOCTL: 0x%02x,0x%02x\r\n\0"),(uint8_t)ulRequest, (uint8_t)(*p));
-#endif
+//#ifdef DEBUG_I2C
+//	xprintf_P( PSTR("FRTOS_I2C_IOCTL: 0x%02x,0x%02x\r\n\0"),(uint8_t)ulRequest, (uint8_t)(*p));
+//#endif
 
 	switch( ulRequest )
 	{
@@ -301,17 +302,17 @@ uint16_t *p;
 			case ioctl_SET_TIMEOUT:
 				xI2c->xBlockTime = *p;
 				break;
-			case ioctl_I2C_SET_DEVADDRESS:
-				xI2c->devAddress = (int8_t)(*p);
+			case ioctl_I2C_SET_SLAVE_ADDRESS:
+				xI2c->slaveAddress = (int8_t)(*p);
 				break;
-			case ioctl_I2C_SET_BYTEADDRESS:
-				xI2c->byteAddress = (uint16_t)(*p);
+			case ioctl_I2C_SET_DATA_ADDRESS:
+				xI2c->dataAddress = (uint16_t)(*p);
 				break;
-			case ioctl_I2C_SET_BYTEADDRESSLENGTH:
-				xI2c->byteAddressLength = (int8_t)(*p);
+			case ioctl_I2C_SET_DATA_LENGTH:
+				xI2c->dataLength = (int8_t)(*p);
 				break;
 			case ioctl_I2C_GET_LAST_ERROR:
-				xReturn = xI2c->i2c_error_code;;
+				xReturn = xI2c->i2c_error_code;
 				break;
 			default :
 				xReturn = -1;
@@ -327,11 +328,11 @@ int frtos_i2c_read( periferico_i2c_port_t *xI2c, char *pvBuffer, uint16_t xBytes
 
 int xReturn = 0U;
 
-#ifdef DEBUG_I2C
-	xprintf_P( PSTR("FRTOS_I2C_RD: devAddr:0x%02x,addrLen:0x%02x,byteAddr:0x%02x,xbytes: 0x%02x\r\n\0"),xI2c->devAddress, xI2c->byteAddressLength, xI2c->byteAddress, xBytes);
-#endif
+//#ifdef DEBUG_I2C
+//	xprintf_P( PSTR("FRTOS_I2C_RD: devAddr:0x%02x,addrLen:0x%02x,byteAddr:0x%02x,xbytes: 0x%02x\r\n\0"),xI2c->slaveAddress, xI2c->byteAddressLength, xI2c->byteAddress, xBytes);
+//#endif
 
-	if ( ( xReturn = drv_I2C_master_read(xI2c->devAddress, xI2c->byteAddressLength, xI2c->byteAddress, (char *)pvBuffer, xBytes)) > 0 ) {
+	if ( ( xReturn = drv_I2C_master_read(xI2c->slaveAddress, xI2c->dataLength, xI2c->dataAddress, (char *)pvBuffer, xBytes)) > 0 ) {
 		xI2c->i2c_error_code = I2C_OK;
 	} else {
 		// Error de lectura indicado por el driver.

@@ -4,17 +4,32 @@
  * git remote add REM_SP5KV4 https://github.com/ppeluffo/sp5KV4.git
  * git push -u REM_SP5KV4 master
  *
+ * git remote add origin https://github.com/ppeluffo/sp5KV6.git
+ * git push -u origin master
+ *
  * Para ver donde estan las variables en memoria y cuanto ocupan usamos
  * avr-nm --defined-only --size-sort -S -td sp5KV5.elf | grep " B \| D "
+ *
+ * !!! Notas de diseño.
+ * 1) Cuando se devuelve un string o buffer ( ej.en un driver ), ponerle al final un '\0'
+ * 2) Cuando se manda un string o buffer a otra funcion, terminarlo en '\0'
+ * 3) En los if, usar la forma larga siempre ( ACK !!!! )
+ *
  *--------------------------------------------------------------------------
- * VERSION 6.0.0 @ 2018-08-02
+ * VERSION 6.0.0beta @ 2018-08-01
  * -Basados en la version 5.2.0 agrego FRTOS10 con estructuras estaticas
  * -drivers uarts y nuevo frtos-io
  * -l_printf y l_ringbuffers
  * -drivers i2c / modifico frtos-io / incorporo FRTOS-CMD
  * -testing de modo comando y uart con sistema de menues.
+ * -l_eeprom / l_rtc / testing modo cmd.
+ * -l_mcp / testing modo cmd.
  *
  * !!! Funcina OK pero hay que revisar la velocidad con que atiende los comandos !!!
+ * Se arregla poniendo los tiempos de espera de read en 10ms
+ *
+ * !!! CMD no acepta flecha arriba/abajo.
+ *
  *
  *--------------------------------------------------------------------------
  * WATCHDOG:
