@@ -8,7 +8,6 @@
 #ifndef SP5K_H_
 #define SP5K_H_
 
-
 #include <avr/io.h>			/* include I/O definitions (port names, pin names, etc) */
 //#include <avr/signal.h>		/* include "signal" names (interrupt names) */
 #include <avr/wdt.h>
@@ -38,22 +37,17 @@
 #include "timers.h"
 #include "limits.h"
 
+#include "sp5KV6_global.h"
+
 #include "frtos_io.h"
 #include "FRTOS-CMD.h"
 
 #include "l_printf.h"
 #include "l_eeprom.h"
 #include "l_rtc1340.h"
-
-
-// DEFINICION DEL TIPO DE SISTEMA
-//----------------------------------------------------------------------------
-#define SP5K_REV "6.0.0beta"
-#define SP5K_DATE "@ 20180801"
-#define SP5KV5_8CH
-
-#define SP5K_MODELO "sp5KV6 HW:avr1284P R5.0"
-#define SP5K_VERSION "FW:FRTOS10"
+#include "l_mcp.h"
+#include "l_iopines.h"
+#include "l_ads7828.h"
 
 #define CHAR64		64
 #define CHAR128	 	128

@@ -15,6 +15,9 @@ static void pv_snprintfP_ERR(void);
 
 static void pv_cmd_rwEE(uint8_t cmd_mode );
 static void pv_cmd_rwRTC(uint8_t cmd_mode );
+static void pv_cmd_rwMCP(uint8_t cmd_mode );
+static void pv_cmd_rwGPRS(uint8_t cmd_mode );
+static void pv_cmd_rdAN(uint8_t cmd_mode );
 
 //----------------------------------------------------------------------------------------
 // FUNCIONES DE CMDMODE
@@ -98,7 +101,14 @@ static void cmdHelpFunction(void)
 		xprintf_P( PSTR("-write\r\n\0"));
 		xprintf_P( PSTR("  rtc YYMMDDhhmm\r\n\0"));
 		if ( tipo_usuario == USER_TECNICO ) {
-			xprintf_P( PSTR("  (ee {pos} {string}\r\n\0"));
+			xprintf_P( PSTR("  ee {pos} {string}\r\n\0"));
+			xprintf_P( PSTR("  kaled,termpwr {on|off}\r\n\0"));
+			xprintf_P( PSTR("  mcp {0|1} {regAddr} {regValue}\r\n\0"));
+			xprintf_P( PSTR("  gprs {pwr|sw} {on|off}\r\n\0"));
+			xprintf_P( PSTR("  clatch0,clatch1 {0|1}\r\n\0"));
+#ifdef SP5KV5_3CH
+			xprintf_P( PSTR("  {analog|sensor} pwr {on|off}\r\n\0"));
+#endif
 		}
 		return;
 	}
@@ -109,6 +119,10 @@ static void cmdHelpFunction(void)
 		xprintf_P( PSTR("  rtc, frame\r\n\0"));
 		if ( tipo_usuario == USER_TECNICO ) {
 			xprintf_P( PSTR("  ee {pos} {lenght}\r\n\0"));
+			xprintf_P( PSTR("  termswitch, tilt, din0, din1\r\n\0"));
+			xprintf_P( PSTR("  mcp {0|1} {regAddr}\r\n\0"));
+			xprintf_P( PSTR("  ain {0..2}, bat, adc {0..7}\r\n\0"));
+
 		}
 		return;
 
@@ -173,6 +187,8 @@ static void cmdResetFunction(void)
 		}
 	}
 
+	wdt_enable(WDTO_30MS);
+	while(1) {}
 	cmdClearScreen();
 
 }
@@ -209,6 +225,62 @@ static void cmdReadFunction(void)
 		return;
 	}
 
+	// TERMSWITCH
+	// read termswitch
+	if (!strcmp_P( strupr(argv[1]), PSTR("TERMSWITCH\0")) && ( tipo_usuario == USER_TECNICO) ) {
+		xprintf_P( PSTR("TERMswitch=%d\r\n\0"), IO_read_TERM_PIN() );
+		return;
+	}
+
+	// MCP
+	// read mcp {0|1} {regAddr}
+	if (!strcmp_P( strupr(argv[1]), PSTR("MCP\0")) && ( tipo_usuario == USER_TECNICO) ) {
+		pv_cmd_rwMCP(RD_CMD);
+		return;
+	}
+
+	// TILT
+	// read tilt
+	if (!strcmp_P( strupr(argv[1]), PSTR("TILT\0")) && ( tipo_usuario == USER_TECNICO) ) {
+		xprintf_P( PSTR("TILT=%d\r\n\0"), IO_read_TILT_PIN() );
+		return;
+	}
+
+	// DIN0
+	// read din0
+	if (!strcmp_P( strupr(argv[1]), PSTR("DIN0\0")) && ( tipo_usuario == USER_TECNICO) ) {
+		xprintf_P( PSTR("DIN0=%d\r\n\0"), IO_read_DIN0() );
+		return;
+	}
+
+	// DIN1
+	// read din1
+	if (!strcmp_P( strupr(argv[1]), PSTR("DIN1\0")) && ( tipo_usuario == USER_TECNICO) ) {
+		xprintf_P( PSTR("DIN1=%d\r\n\0"), IO_read_DIN1() );
+		return;
+	}
+
+	// AIN ( Entradas analogicas del datalogger )
+	// read ain 0..2
+	if (!strcmp_P( strupr(argv[1]), PSTR("AIN\0")) && ( tipo_usuario == USER_TECNICO) ) {
+		pv_cmd_rdAN(0);
+		return;
+	}
+
+	// BAT
+	// read bat
+	if (!strcmp_P( strupr(argv[1]), PSTR("BAT\0")) && ( tipo_usuario == USER_TECNICO) ) {
+		pv_cmd_rdAN(1);
+		return;
+	}
+
+	// ADC ( Caales del conversor A/D )
+	// read adc {0..7}
+	if (!strcmp_P( strupr(argv[1]), PSTR("ADC\0")) && ( tipo_usuario == USER_TECNICO) ) {
+		pv_cmd_rdAN(2);
+		return;
+	}
+
 	// CMD NOT FOUND
 	xprintf_P( PSTR("ERROR\r\nCMD NOT DEFINED\r\n\0"));
 	return;
@@ -239,6 +311,111 @@ static void cmdWriteFunction(void)
 		pv_cmd_rwRTC(WR_CMD);
 		return;
 	}
+
+	// KALED
+	// write kaled (on|off)
+	if (!strcmp_P( strupr(argv[1]), PSTR("LED\0")) ) {
+		if (!strcmp_P( strupr(argv[2]), PSTR("ON\0")) ) {
+			IO_set_led_KA_logicBoard();
+			IO_set_LED_KA_analogBoard();
+			return;
+		}
+		if (!strcmp_P( strupr(argv[2]), PSTR("OFF\0")) ) {
+			IO_clear_led_KA_logicBoard();
+			IO_clear_LED_KA_analogBoard();
+			return;
+		}
+		return;
+	}
+
+	// TERMPWR
+	// write termpwr (0|1)
+	if (!strcmp_P( strupr(argv[1]), PSTR("TERMPWR\0")) ) {
+		if (!strcmp_P( strupr(argv[2]), PSTR("ON\0")) ) {
+			IO_set_term_pwr();
+			return;
+		}
+		if (!strcmp_P( strupr(argv[2]), PSTR("OFF\0")) ) {
+			IO_clear_term_pwr();
+			return;
+		}
+		return;
+	}
+
+	// MCP
+	// write mcp {0|1} {regAddr} {regValue}
+	if (!strcmp_P( strupr(argv[1]), PSTR("MCP\0")) && ( tipo_usuario == USER_TECNICO) ) {
+		pv_cmd_rwMCP(WR_CMD);
+		return;
+	}
+
+	// GPRS
+	// write gprs {pwr|sw} {on|off}
+	if (!strcmp_P( strupr(argv[1]), PSTR("GPRS\0")) && ( tipo_usuario == USER_TECNICO) ) {
+		pv_cmd_rwGPRS(WR_CMD);
+		return;
+	}
+
+	// ANALOG
+	// write analog pwr {on|off}
+	if (!strcmp_P( strupr(argv[1]), PSTR("ANALOG\0")) && ( tipo_usuario == USER_TECNICO) ) {
+		if (!strcmp_P( strupr(argv[2]), PSTR("PWR\0")) ) {
+			if (!strcmp_P( strupr(argv[3]), PSTR("ON\0")) ) {
+				IO_set_analog_pwr(); pv_snprintfP_OK(); return;
+			}
+			if (!strcmp_P( strupr(argv[3]), PSTR("OFF\0")) ) {
+				IO_clear_analog_pwr(); pv_snprintfP_OK(); return;
+			}
+			pv_snprintfP_ERR();
+			return;
+		}
+		pv_snprintfP_ERR();
+		return;
+	}
+
+	// SENSOR
+	// write sensor pwr {on|off}
+	if (!strcmp_P( strupr(argv[1]), PSTR("SENSOR\0")) && ( tipo_usuario == USER_TECNICO) ) {
+		if (!strcmp_P( strupr(argv[2]), PSTR("PWR\0")) ) {
+			if (!strcmp_P( strupr(argv[3]), PSTR("ON\0")) ) {
+				IO_set_sensors_pwr(); pv_snprintfP_OK(); return;
+			}
+			if (!strcmp_P( strupr(argv[3]), PSTR("OFF\0")) ) {
+				IO_clear_sensors_pwr(); pv_snprintfP_OK(); return;
+			}
+			pv_snprintfP_ERR();
+			return;
+		}
+		pv_snprintfP_ERR();
+		return;
+	}
+
+	// CLATCH0
+	// write clatch0 (0|1)
+	if (!strcmp_P( strupr(argv[1]), PSTR("CLATCH0\0")) && ( tipo_usuario == USER_TECNICO) ) {
+		if ( atoi(argv[2]) == 0 ) {
+			IO_clear_CLRQ0(); pv_snprintfP_OK(); return;
+		}
+		if ( atoi(argv[2]) == 1 ) {
+			IO_set_CLRQ0(); pv_snprintfP_OK(); return;
+		}
+		pv_snprintfP_ERR();
+		return;
+	}
+
+	// CLATCH1
+	// write clatch1 (0|1)
+	if (!strcmp_P( strupr(argv[1]), PSTR("CLATCH1\0")) && ( tipo_usuario == USER_TECNICO) ) {
+		if ( atoi(argv[2]) == 0 ) {
+			IO_clear_CLRQ1(); pv_snprintfP_OK(); return;
+		}
+		if ( atoi(argv[2]) == 1 ) {
+			IO_set_CLRQ1(); pv_snprintfP_OK(); return;
+		}
+		pv_snprintfP_ERR();
+		return;
+	}
+
 
 	// CMD NOT FOUND
 	xprintf_P( PSTR("ERROR\r\nCMD NOT DEFINED\r\n\0"));
@@ -319,6 +496,109 @@ int8_t xBytes;
 
 		RTC_rtc2str(buffer,&rtc);
 		xprintf_P( PSTR("%s\r\n\0"), buffer );
+		return;
+	}
+
+}
+//------------------------------------------------------------------------------------
+static void pv_cmd_rwMCP(uint8_t cmd_mode )
+{
+int xBytes = 0;
+uint8_t data;
+
+	// read mcp {0|1} {regAddr}
+	if ( cmd_mode == RD_CMD ) {
+		xBytes = MCP_read( (uint8_t)(atoi(argv[2])), (uint8_t)(atoi(argv[3]) ), (char *)&data, 1 );
+		if ( xBytes == -1 )
+			xprintf_P(PSTR("ERROR: I2C:MCP:pv_cmd_rwMCP\r\n\0"));
+
+		if ( xBytes > 0 ) {
+			xprintf_P( PSTR( "MCP%d(0x%02x)=0x%02x\r\n\0"),atoi(argv[2]), data);
+		}
+		( xBytes > 0 ) ? pv_snprintfP_OK() : 	pv_snprintfP_ERR();
+		return;
+	}
+
+	// write mcp {0|1} {regAddr} {regValue}
+	if ( cmd_mode == WR_CMD ) {
+
+		xBytes = MCP_write( (uint8_t)(atol(argv[2])), (uint8_t)(atoi(argv[3]) ), argv[5], 1 );
+		if ( xBytes == -1 )
+			xprintf_P(PSTR("ERROR: I2C:MCP:pv_cmd_rwMCP\r\n\0"));
+
+		( xBytes > 0 ) ? pv_snprintfP_OK() : 	pv_snprintfP_ERR();
+		return;
+	}
+
+}
+//------------------------------------------------------------------------------------
+static void pv_cmd_rwGPRS(uint8_t cmd_mode )
+{
+
+	if ( cmd_mode == WR_CMD ) {
+
+		// write gprs (pwr|sw) {on|off}
+
+		if (!strcmp_P( strupr(argv[2]), PSTR("PWR\0")) ) {
+			if (!strcmp_P( strupr(argv[3]), PSTR("ON\0")) ) {
+				IO_gprs_pwr_on(); pv_snprintfP_OK(); return;
+			}
+			if (!strcmp_P( strupr(argv[3]), PSTR("OFF\0")) ) {
+				IO_gprs_pwr_off(); pv_snprintfP_OK(); return;
+			}
+			pv_snprintfP_ERR();
+			return;
+		}
+
+		if (!strcmp_P( strupr(argv[2]), PSTR("SW\0")) ) {
+			if (!strcmp_P( strupr(argv[3]), PSTR("ON\0")) ) {
+				IO_gprs_sw_on();
+				pv_snprintfP_OK(); return;
+			}
+			if (!strcmp_P( strupr(argv[3]), PSTR("OFF\0")) ) {
+				IO_gprs_sw_off(); pv_snprintfP_OK(); return;
+			}
+			pv_snprintfP_ERR();
+			return;
+		}
+
+		return;
+	}
+
+}
+//------------------------------------------------------------------------------------
+static void pv_cmd_rdAN(uint8_t cmd_mode )
+{
+
+	// Lee el conversor A/D ya sea como canal, bateria o entrada analogica
+	switch(cmd_mode) {
+	case 0:	// read ain 0..2
+		switch (atoi(argv[2]) ) {
+		case 0:
+			xprintf_P( PSTR("AIN0=%d\r\n\0"), AN_read_CH0() );
+			break;
+		case 1:
+			xprintf_P( PSTR("AIN1=%d\r\n\0"), AN_read_CH1() );
+			break;
+		case 2:
+			xprintf_P( PSTR("AIN2=%d\r\n\0"), AN_read_CH2() );
+			break;
+		default:
+			pv_snprintfP_ERR();
+			return;
+		}
+		break;
+
+	case 1: // read bat
+		xprintf_P( PSTR("BAT=%d\r\n\0"), AN_read_BAT() );
+		break;
+
+	case 2:	// read adc {0..7}
+		xprintf_P( PSTR("ADC%d=%d\r\n\0"), atoi(argv[2]), ADC_read(atoi(argv[2])) );
+		break;
+
+	default:
+		pv_snprintfP_ERR();
 		return;
 	}
 

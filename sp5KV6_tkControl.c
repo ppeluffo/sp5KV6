@@ -10,11 +10,14 @@
  */
 
 #include "sp5KV6.h"
-
+#include "l_iopines.h"
 
 static void pv_tkControl_init(void);
 static void pv_check_wdg(void);
 
+#ifndef DEBUG_I2C
+	static void pv_leds(void);
+#endif
 //------------------------------------------------------------------------------------
 void tkControl(void * pvParameters)
 {
@@ -36,14 +39,33 @@ void tkControl(void * pvParameters)
     {
 
  	   	// Espero 1 segundo para revisar todo.
-        vTaskDelay( ( TickType_t)( 1000 / portTICK_RATE_MS ) );
+        vTaskDelay( ( TickType_t)( 3000 / portTICK_RATE_MS ) );
 
          // Reviso los sistemas perifericos.
         pv_check_wdg();
 
+        // En debug_i2c no ensucio el log con el prender/apagar led. !!!!
+#ifndef DEBUG_I2C
+        pv_leds();
+#endif
+
     }
 
 }
+//------------------------------------------------------------------------------------
+#ifndef DEBUG_I2C
+static void pv_leds(void)
+{
+	IO_set_led_KA_logicBoard();
+	IO_set_LED_KA_analogBoard();
+
+    vTaskDelay( ( TickType_t)( 20 / portTICK_RATE_MS ) );
+
+    IO_clear_led_KA_logicBoard();
+    IO_clear_LED_KA_analogBoard();
+
+}
+#endif
 //------------------------------------------------------------------------------------
 static void pv_check_wdg(void)
 {
@@ -55,10 +77,14 @@ static void pv_check_wdg(void)
 static void pv_tkControl_init(void)
 {
 
-	// Habilito el buffer serial
-	UARTCTL_DDR |= (_BV(UARTCTL));
-	UARTCTL_PORT &= ~(1 << UARTCTL);
+	// Habilito el buffer serial ( UARTCTL salida ). Esto permite usar el puerto serial
+	IO_enable_uart_ctl();
 
+	// Inicializo el MCP0. Permite prender la terminal.
+	MCP_init(0);
+
+	// Prendo la terminal
+	IO_term_pwr_on();
 
 	// Habilito al resto de las tareas a arrancar.
 	startTask = true;

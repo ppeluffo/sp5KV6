@@ -16,21 +16,21 @@
  * 3) En los if, usar la forma larga siempre ( ACK !!!! )
  *
  *--------------------------------------------------------------------------
- * VERSION 6.0.0beta @ 2018-08-01
+ * VERSION 6.0.0beta @ 2018-08-05
  * -Basados en la version 5.2.0 agrego FRTOS10 con estructuras estaticas
  * -drivers uarts y nuevo frtos-io
  * -l_printf y l_ringbuffers
  * -drivers i2c / modifico frtos-io / incorporo FRTOS-CMD
  * -testing de modo comando y uart con sistema de menues.
  * -l_eeprom / l_rtc / testing modo cmd.
- * -l_mcp / testing modo cmd.
+ * -l_mcp / testing modo cmd. ( prender / apagar led )
  *
  * !!! Funcina OK pero hay que revisar la velocidad con que atiende los comandos !!!
  * Se arregla poniendo los tiempos de espera de read en 10ms
  *
  * !!! CMD no acepta flecha arriba/abajo.
  *
- *
+ * -
  *--------------------------------------------------------------------------
  * WATCHDOG:
  * Para hacer un mejor seguimiento de las fallas, agrego a c/estado un nro.
@@ -252,6 +252,15 @@ unsigned int i,j;
 static void pv_initMPU(void)
 {
 	// Son acciones que se hacen antes de arrancar el RTOS
+	IO_config_UART_CLT();
+	IO_config_TERM_PIN();
+
+	IO_config_TILT_PIN();
+
+	IO_config_CLRQ0();
+	IO_config_CLRQ1();
+
+	IO_config_LED_KA_analogBoard();
 
 	// Configuro el modo de Sleep.
 	set_sleep_mode(SLEEP_MODE_PWR_SAVE);

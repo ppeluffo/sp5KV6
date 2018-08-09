@@ -32,5 +32,4 @@ int drv_I2C_master_read  ( const uint8_t slaveAddress, const uint8_t dataLength,
 
 //#define DEBUG_I2C
 
-
 #endif /* SRC_SP5KDRIVERS_DRV_I2C_SP5K_H_ */

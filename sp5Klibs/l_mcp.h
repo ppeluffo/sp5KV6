@@ -1,21 +1,12 @@
 /*
- * mcp_sp5KFRTOS.c
+ * l_mcp.h
  *
- *  Created on: 01/11/2013
- *      Author: root
- *
- * Funciones para uso de los MCP del SP5K modificadas para usarse con FRTOS.
- *
- *
+ *  Created on: 5 ago. 2018
+ *      Author: pablo
  */
-//------------------------------------------------------------------------------------
 
-// --------------------------------------------------------------------------------
-// SPV5 LIB
-// --------------------------------------------------------------------------------
-
-#ifndef AVRLIBFRTOS_MCP_SP5KFRTOS_H_
-#define AVRLIBFRTOS_MCP_SP5KFRTOS_H_
+#ifndef SRC_SP5KLIBS_L_MCP_H_
+#define SRC_SP5KLIBS_L_MCP_H_
 
 #include "frtos_io.h"
 #include "l_i2c.h"
@@ -114,7 +105,10 @@ void MCP_init(uint8_t device_id );
 #define MCP_read( dev_id, rdAddress, data, length ) 	I2C_read( MCP_id2busaddr(dev_id), rdAddress, data, length );
 #define MCP_write( dev_id, wrAddress, data, length ) 	I2C_write( MCP_id2busaddr(dev_id), wrAddress, data, length );
 
-int MCP_modify( uint8_t dev_id, uint8_t dataAddress, uint8_t value, uint8_t bitMask );
+int MCP_read_bit ( uint8_t dev_id, uint8_t mcp_register, uint8_t bit );
+int MCP_set_bit ( uint8_t dev_id, uint8_t mcp_register, uint8_t bit );
+int MCP_clear_bit ( uint8_t dev_id, uint8_t mcp_register, uint8_t bit );
+int MCP_toggle_bit ( uint8_t dev_id, uint8_t mcp_register, uint8_t bit );
 
-//
-#endif /* AVRLIBFRTOS_MCP_SP5KFRTOS_H_ */
+
+#endif /* SRC_SP5KLIBS_L_MCP_H_ */
