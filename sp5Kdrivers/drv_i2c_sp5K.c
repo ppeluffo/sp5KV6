@@ -167,12 +167,6 @@ i2c_retry:
 	if ( i2c_status == TW_MT_ARB_LOST) goto i2c_retry;
 	if ( (i2c_status != TW_START) && (i2c_status != TW_REP_START) ) goto i2c_quit;
 
-#ifdef SP5KV5_3CH
-	// En el caso del ADC, el read no lleva la parte de mandar la SLA+W. !!!!!
-	if ( slaveAddress == ADS7828_ADDR)
-		goto SRL_R;
-#endif /* SP5KV5_3CH */
-
 	// Pass2) (SLA_W) Send slave address. Debo recibir 0x18 ( SLA_ACK )
 	txbyte = slaveAddress | TW_WRITE;
 	pvI2C_sendByte(txbyte);
@@ -180,11 +174,12 @@ i2c_retry:
 		goto i2c_quit;
 	// Check the TWSR status
 	i2c_status = pvI2C_getStatus();
-	if ((i2c_status == TW_MT_SLA_NACK) || (i2c_status == TW_MT_ARB_LOST)) goto i2c_retry;
-	if (i2c_status != TW_MT_SLA_ACK) goto i2c_quit;
 #ifdef DEBUG_I2C
 	xprintf_P( PSTR("I2C_MR2: 0x%02x,0x%02x\r\n\0"),txbyte,i2c_status );
 #endif
+	if ((i2c_status == TW_MT_SLA_NACK) || (i2c_status == TW_MT_ARB_LOST)) goto i2c_retry;
+	if (i2c_status != TW_MT_SLA_ACK) goto i2c_quit;
+
 	// Pass3) Envio la direccion fisica donde comenzar a escribir.
 	// En las memorias es una direccion de 2 bytes.En el DS1344 o el BusController es de 1 byte
 	// Envio primero el High 8 bit i2c address. Debo recibir 0x28 ( DATA_ACK)
@@ -224,7 +219,6 @@ i2c_retry:
 	if (i2c_status == TW_MT_ARB_LOST) goto i2c_retry;
 	if ( (i2c_status != TW_START) && (i2c_status != TW_REP_START) ) goto i2c_quit;
 
-SRL_R:
 	// Pass5) (SLA_R) Send slave address + READ. Debo recibir un 0x40 ( SLA_R ACK)
 	txbyte = slaveAddress | TW_READ;
 	pvI2C_sendByte(txbyte);

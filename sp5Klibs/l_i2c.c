@@ -8,7 +8,7 @@
 #include "l_i2c.h"
 
 //------------------------------------------------------------------------------------
-int8_t I2C_read( uint8_t i2c_bus_address, uint32_t rdAddress, char *data, uint8_t length )
+int8_t I2C_read( uint8_t i2c_slave_address, uint32_t rdAddress, char *data, uint8_t length )
 {
 	// Lee en la EE, desde la posicion 'address', 'length' bytes
 	// y los deja en el buffer apuntado por 'data'
@@ -25,12 +25,12 @@ uint8_t i2c_error_code;
 	frtos_ioctl( fdI2C,ioctl_OBTAIN_BUS_SEMPH, NULL);
 
 	// 1) Indicamos el periferico i2c en el cual queremos leer ( variable de 8 bits !!! )
-	bus_address = i2c_bus_address;
+	bus_address = i2c_slave_address;
 	frtos_ioctl(fdI2C,ioctl_I2C_SET_SLAVE_ADDRESS, &bus_address);
 
 	// 2) Luego indicamos la direccion desde donde leer:
 	//    Largo: 1 byte indica el largo. El FRTOS espera 1 byte.
-	if ( i2c_bus_address == BUSADDR_EEPROM_M2402 ) {
+	if ( i2c_slave_address == BUSADDR_EEPROM_M2402 ) {
 		data_address_length = 2;	// Las direccione de la EEprom son de 16 bits
 	} else {
 		data_address_length = 1;
@@ -59,7 +59,7 @@ uint8_t i2c_error_code;
 
 }
 //------------------------------------------------------------------------------------
-int8_t I2C_write( uint8_t i2c_bus_address, uint32_t wrAddress, char *data, uint8_t length )
+int8_t I2C_write( uint8_t i2c_slave_address, uint32_t wrAddress, char *data, uint8_t length )
 {
 	// Escribe en la EE a partir de la posicion 'eeAddress', la cantidad
 	// 'length' de bytes apuntados por 'data'
@@ -76,12 +76,12 @@ uint8_t i2c_error_code;
 	frtos_ioctl( fdI2C,ioctl_OBTAIN_BUS_SEMPH, NULL);
 
 	// 1) Indicamos el periferico i2c en el cual queremos leer ( variable de 8 bits !!! )
-	bus_address = i2c_bus_address;
+	bus_address = i2c_slave_address;
 	frtos_ioctl(fdI2C,ioctl_I2C_SET_SLAVE_ADDRESS, &bus_address);
 
 	// 2) Luego indicamos la direccion desde donde leer:
 	//    Largo: 1 byte indica el largo. El FRTOS espera 1 byte.
-	if ( i2c_bus_address == BUSADDR_EEPROM_M2402 ) {
+	if ( i2c_slave_address == BUSADDR_EEPROM_M2402 ) {
 		data_address_length = 2;	// Las direccione de la EEprom son de 16 bits
 	} else {
 		data_address_length = 1;

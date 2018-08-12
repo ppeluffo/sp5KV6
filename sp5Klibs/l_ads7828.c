@@ -20,12 +20,6 @@ uint8_t ads7828Channel;
 uint8_t ads7828CmdByte;
 uint8_t buffer[2];
 int16_t xReturn = -1;
-int8_t xBytes = 0;
-uint8_t bus_address;
-uint8_t	data_address_length = 1;
-uint16_t data_address;
-uint8_t i2c_error_code;
-
 
 	if ( adc_channel > 7) {
 		goto quit;
@@ -39,42 +33,9 @@ uint8_t i2c_error_code;
 	ads7828CmdByte = ads7828Channel & 0xF0;	// SD=1 ( single end inputs )
 	ads7828CmdByte |= ADS7828_CMD_PDMODE2;	// Internal reference ON, A/D converter ON
 
-	// start conversion on requested channel
-	// Lo primero es obtener el semaforo
-	frtos_ioctl( fdI2C,ioctl_OBTAIN_BUS_SEMPH, NULL);
-
-	// 1) Indicamos el periferico i2c en el cual queremos leer ( variable de 8 bits !!! )
-	bus_address = ADS7828_ADDR;
-	frtos_ioctl(fdI2C,ioctl_I2C_SET_SLAVE_ADDRESS, &bus_address);
-
-	// 2) Luego indicamos la direccion desde donde leer:
-	//    Largo: 1 byte indica el largo. El FRTOS espera 1 byte.
-	data_address_length = 1;
-	frtos_ioctl(fdI2C,ioctl_I2C_SET_DATA_LENGTH, &data_address_length);
-	// 	Direccion: El FRTOS espera siempre 2 bytes.
-	data_address = 0;
-	frtos_ioctl(fdI2C,ioctl_I2C_SET_DATA_ADDRESS,&data_address);
-
-	// Escribo en el ADS el comando.
-	xBytes = 1;
-	xReturn = frtos_write(fdI2C, (char *)&ads7828CmdByte, xBytes);
-	i2c_error_code = frtos_ioctl(fdI2C, ioctl_I2C_GET_LAST_ERROR, NULL );
-	if (i2c_error_code != I2C_OK ) {
-		xprintf_P(PSTR("ERROR: ADC WR err (%d).\r\n\0"), i2c_error_code );
-	}
-
-	if (xReturn != xBytes ) {
-		xReturn = -1;
-	}
-
-	// El comando prendio el ADC por lo que espero el settle time
-	vTaskDelay(1);
-
-	// Leo el resultado de la conversion ( 2 bytes )
-	xBytes = 2;
-	xReturn = frtos_read(fdI2C, (char *)&buffer, xBytes);
-
-	if (xReturn != xBytes ) {
+	xReturn = I2C_read(ADS7828_ADDR, ads7828CmdByte, (char *)&buffer, 2);
+	if (xReturn != 2 ) {
+	//	xprintf_P(PSTR("ADC error\r\n\0"));
 		xReturn = -1;
 	}
 
@@ -87,8 +48,6 @@ uint8_t i2c_error_code;
 
 quit:
 
-	// Y libero el semaforo.
-	frtos_ioctl( fdI2C,ioctl_RELEASE_BUS_SEMPH, NULL);
 	return(xReturn);
 
 }

@@ -92,14 +92,27 @@ void drv_set_baudrate(uint32_t baudRate, uint8_t *baudA, uint8_t *baudB, uint8_t
 void drv_uart_rs232_open( uint32_t baudrate )
 {
 	// El puerto de RS232 CONSOLA es el UART1
+
 uint8_t bauddiv;
 
-	bauddiv = 8;					// Console 115200
+	switch(baudrate) {
+	case 115200:
+		bauddiv = 8;
+		break;
+	case 9600:
+		bauddiv = 103;
+		break;
+	default:
+		bauddiv = 103;
+		break;
+	}
+
 	UBRR1L = bauddiv;
 	UBRR1H = (bauddiv>>8);
 	UCSR1B = _BV(RXCIE1) | _BV(RXEN1) | _BV(TXEN1);
 	UCSR1C = ( serUCSRC_SELECT | serEIGHT_DATA_BITS );
 	UCSR1A = _BV(U2X1);
+
 	return;
 }
 //----------------------------------------------------------------------------------------
@@ -152,16 +165,24 @@ void drv_uart_gprs_open( uint32_t baudrate )
 
 uint8_t bauddiv;
 
-	bauddiv = 8;					// GPRS: 115200
+	switch(baudrate) {
+	case 115200:
+		bauddiv = 8;
+		break;
+	case 9600:
+		bauddiv = 103;
+		break;
+	default:
+		bauddiv = 103;
+		break;
+	}
+
 	UBRR0L = bauddiv;
 	UBRR0H = (bauddiv>>8);
-	// Enable the Rx interrupt.  The Tx interrupt will get enabled
-	// later. Also enable the Rx and Tx.
-	// enable RxD/TxD and interrupts
 	UCSR0B = _BV(RXCIE0) | _BV(RXEN0) | _BV(TXEN0);
-	// Set the data bits to 8N1.
 	UCSR0C = ( serUCSRC_SELECT | serEIGHT_DATA_BITS );
-	UCSR1A = (_BV(U2X0));
+	UCSR0A = _BV(U2X0);
+
 	return;
 }
 //----------------------------------------------------------------------------------------

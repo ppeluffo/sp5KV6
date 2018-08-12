@@ -14,10 +14,8 @@
 
 static void pv_tkControl_init(void);
 static void pv_check_wdg(void);
+static void pv_check_leds(void);
 
-#ifndef DEBUG_I2C
-	static void pv_leds(void);
-#endif
 //------------------------------------------------------------------------------------
 void tkControl(void * pvParameters)
 {
@@ -43,33 +41,29 @@ void tkControl(void * pvParameters)
 
          // Reviso los sistemas perifericos.
         pv_check_wdg();
-
-        // En debug_i2c no ensucio el log con el prender/apagar led. !!!!
-#ifndef DEBUG_I2C
-        pv_leds();
-#endif
+        pv_check_leds();
 
     }
 
 }
 //------------------------------------------------------------------------------------
-#ifndef DEBUG_I2C
-static void pv_leds(void)
-{
-	IO_set_led_KA_logicBoard();
-	IO_set_LED_KA_analogBoard();
-
-    vTaskDelay( ( TickType_t)( 20 / portTICK_RATE_MS ) );
-
-    IO_clear_led_KA_logicBoard();
-    IO_clear_LED_KA_analogBoard();
-
-}
-#endif
-//------------------------------------------------------------------------------------
 static void pv_check_wdg(void)
 {
 	wdt_reset();
+}
+//------------------------------------------------------------------------------------
+static void pv_check_leds(void)
+{
+	IO_led_KA_analogBoard_on();
+	vTaskDelay( 1 );
+	IO_led_KA_analogBoard_off();
+
+#ifndef DEBUG_I2C
+	IO_led_KA_logicBoard_on();
+	vTaskDelay( 1 );
+	IO_led_KA_logicBoard_off();
+#endif
+
 }
 //------------------------------------------------------------------------------------
 // FUNCIONES DE INIT
@@ -82,6 +76,7 @@ static void pv_tkControl_init(void)
 
 	// Inicializo el MCP0. Permite prender la terminal.
 	MCP_init(0);
+	MCP_init(1);
 
 	// Prendo la terminal
 	IO_term_pwr_on();

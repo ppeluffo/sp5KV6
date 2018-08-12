@@ -10,6 +10,9 @@
  * Para ver donde estan las variables en memoria y cuanto ocupan usamos
  * avr-nm --defined-only --size-sort -S -td sp5KV5.elf | grep " B \| D "
  *
+ * Para ver el uso de memoria usamos
+ * avr-nm -n sp5KV6.elf | more
+ *
  * !!! Notas de diseño.
  * 1) Cuando se devuelve un string o buffer ( ej.en un driver ), ponerle al final un '\0'
  * 2) Cuando se manda un string o buffer a otra funcion, terminarlo en '\0'
@@ -17,6 +20,7 @@
  *
  *--------------------------------------------------------------------------
  * VERSION 6.0.0beta @ 2018-08-05
+ *
  * -Basados en la version 5.2.0 agrego FRTOS10 con estructuras estaticas
  * -drivers uarts y nuevo frtos-io
  * -l_printf y l_ringbuffers
@@ -24,13 +28,15 @@
  * -testing de modo comando y uart con sistema de menues.
  * -l_eeprom / l_rtc / testing modo cmd.
  * -l_mcp / testing modo cmd. ( prender / apagar led )
+ * -El cmdline lo saco del FRTOS-IO y pasa a ser una libreria.
+ * -Pongo los tiempos de espera de read en 10ms para que la consola sea rapida.
  *
- * !!! Funcina OK pero hay que revisar la velocidad con que atiende los comandos !!!
- * Se arregla poniendo los tiempos de espera de read en 10ms
  *
- * !!! CMD no acepta flecha arriba/abajo.
  *
- * -
+ * Revisar el ledKAanalog: PORTD.6
+ * Revisar el PORTC.3
+ * Reevisar lectura del ADC
+ *
  *--------------------------------------------------------------------------
  * WATCHDOG:
  * Para hacer un mejor seguimiento de las fallas, agrego a c/estado un nro.
@@ -226,13 +232,14 @@ unsigned int i,j;
 	wdt_reset();
 	pv_initMPU();
 
-	frtos_open(fdRS232, 115200);
+	frtos_open(fdRS232, 9600);
 	frtos_open(fdI2C, 100 );
 
 	/* Arranco el RTOS. */
 	startTask = false;
 
 	// Creo los semaforos
+	sem_SYSVars = xSemaphoreCreateMutexStatic( &SYSVARS_xMutexBuffer );
 	xprintf_init();
 
 	// Inicializacion de modulos de las tareas que deben hacerce antes
@@ -241,6 +248,7 @@ unsigned int i,j;
 	// Creo las tasks
 	xTaskCreate(tkCmd, "CMD", tkCmd_STACK_SIZE, NULL, tkCmd_TASK_PRIORITY,  &xHandle_tkCmd);
 	xTaskCreate(tkControl, "CTL", tkControl_STACK_SIZE, NULL, tkControl_TASK_PRIORITY,  &xHandle_tkControl);
+	xTaskCreate(tkDigital, "DIGI", tkDigital_STACK_SIZE, NULL, tkDigital_TASK_PRIORITY,  &xHandle_tkDigital);
 
 	//* Arranco el RTOS. */
 	vTaskStartScheduler();
@@ -253,6 +261,7 @@ static void pv_initMPU(void)
 {
 	// Son acciones que se hacen antes de arrancar el RTOS
 	IO_config_UART_CLT();
+
 	IO_config_TERM_PIN();
 
 	IO_config_TILT_PIN();
@@ -260,7 +269,11 @@ static void pv_initMPU(void)
 	IO_config_CLRQ0();
 	IO_config_CLRQ1();
 
-	IO_config_LED_KA_analogBoard();
+	IO_config_led_KA_analogBoard();
+	IO_led_KA_analogBoard_off();
+
+	IO_config_led_MODEM_analogBoard();
+	IO_led_MODEM_analogBoard_off();
 
 	// Configuro el modo de Sleep.
 	set_sleep_mode(SLEEP_MODE_PWR_SAVE);

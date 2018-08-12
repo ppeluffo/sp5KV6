@@ -48,17 +48,17 @@ uint8_t ticks;
 	while ( !startTask )
 		vTaskDelay( ( TickType_t)( 100 / portTICK_RATE_MS ) );
 
-	FRTOS_CMD_init();
+	CMD_init();
 
 	// Registro los comandos y los mapeo al cmd string.
-	FRTOS_CMD_register( "cls\0", cmdClearScreen );
-	FRTOS_CMD_register( "reset\0", cmdResetFunction);
-	FRTOS_CMD_register( "write\0", cmdWriteFunction);
-	FRTOS_CMD_register( "read\0", cmdReadFunction);
-	FRTOS_CMD_register( "help\0", cmdHelpFunction );
-	FRTOS_CMD_register( "status\0", cmdStatusFunction );
-	FRTOS_CMD_register( "config\0", cmdConfigFunction );
-	FRTOS_CMD_register( "kill\0", cmdKillFunction );
+	CMD_register((uint8_t *)"cls\0", cmdClearScreen );
+	CMD_register((uint8_t *)"reset\0", cmdResetFunction);
+	CMD_register((uint8_t *)"write\0", cmdWriteFunction);
+	CMD_register((uint8_t *)"read\0", cmdReadFunction);
+	CMD_register((uint8_t *)"help\0", cmdHelpFunction );
+	CMD_register((uint8_t *)"status\0", cmdStatusFunction );
+	CMD_register((uint8_t *)"config\0", cmdConfigFunction );
+	CMD_register((uint8_t *)"kill\0", cmdKillFunction );
 
 	// Fijo el timeout del READ
 	ticks = 1;
@@ -77,12 +77,9 @@ uint8_t ticks;
 		// el read se bloquea 50ms. lo que genera la espera.
 		//while ( CMD_read( (char *)&c, 1 ) == 1 ) {
 		while ( frtos_read( fdRS232, (char *)&c, 1 ) == 1 ) {
-			FRTOS_CMD_process(c);
+			CMD_process(c);
 		}
 
-		//xprintf_P( PSTR("starting tkCmd..\r\n\0"));
-		//vTaskDelay( ( TickType_t)( 500 / portTICK_RATE_MS ) );
-		//PORTC ^= 1 << 3;
 	}
 }
 //------------------------------------------------------------------------------------
@@ -94,7 +91,7 @@ static void cmdClearScreen(void)
 //------------------------------------------------------------------------------------
 static void cmdHelpFunction(void)
 {
-	FRTOS_CMD_makeArgv();
+	CMD_makeArgv();
 
 	// HELP WRITE
 	if (!strcmp_P( strupr(argv[1]), PSTR("WRITE\0"))) {
@@ -102,13 +99,11 @@ static void cmdHelpFunction(void)
 		xprintf_P( PSTR("  rtc YYMMDDhhmm\r\n\0"));
 		if ( tipo_usuario == USER_TECNICO ) {
 			xprintf_P( PSTR("  ee {pos} {string}\r\n\0"));
-			xprintf_P( PSTR("  kaled,termpwr {on|off}\r\n\0"));
+			xprintf_P( PSTR("  leds,termpwr {on|off}\r\n\0"));
 			xprintf_P( PSTR("  mcp {0|1} {regAddr} {regValue}\r\n\0"));
 			xprintf_P( PSTR("  gprs {pwr|sw} {on|off}\r\n\0"));
 			xprintf_P( PSTR("  clatch0,clatch1 {0|1}\r\n\0"));
-#ifdef SP5KV5_3CH
 			xprintf_P( PSTR("  {analog|sensor} pwr {on|off}\r\n\0"));
-#endif
 		}
 		return;
 	}
@@ -142,13 +137,16 @@ static void cmdHelpFunction(void)
 		xprintf_P( PSTR("  user {normal|tecnico}\r\n\0"));
 		xprintf_P( PSTR("  default\r\n\0"));
 		xprintf_P( PSTR("  save\r\n\0"));
+		xprintf_P( PSTR("  debug {none|digital}\r\n\0"));
+		xprintf_P( PSTR("  digital {0|1} dname magPP\r\n\0"));
+		xprintf_P( PSTR("  terminal {on|off}\r\n\0"));
 		return;
 
 	}
 
 	// HELP KILL
 	else if (!strcmp_P( strupr(argv[1]), PSTR("KILL\0")) && ( tipo_usuario == USER_TECNICO) ) {
-		xprintf_P( PSTR("-kill {data,digi,gprstx,gprsrx,outputs}\r\n\0"));
+		xprintf_P( PSTR("-kill {digital}\r\n\0"));
 		return;
 
 	} else {
@@ -174,7 +172,7 @@ static void cmdHelpFunction(void)
 static void cmdResetFunction(void)
 {
 
-	FRTOS_CMD_makeArgv();
+	CMD_makeArgv();
 
 	// Reset memory ??
 	if (!strcmp_P( strupr(argv[1]), PSTR("MEMORY\0"))) {
@@ -195,21 +193,57 @@ static void cmdResetFunction(void)
 //------------------------------------------------------------------------------------
 static void cmdKillFunction(void)
 {
+	// Mata a una tarea para que no entorpezca con los logs de otras.
+	// Se usa para tareas de debug. !!
 
+	CMD_makeArgv();
+
+	// KILL DIGITAL
+	if (!strcmp_P( strupr(argv[1]), PSTR("DIGITAL\0"))) {
+		vTaskSuspend( xHandle_tkDigital );
+		pv_snprintfP_OK();
+		return;
+	}
+
+
+	pv_snprintfP_ERR();
+	return;
 
 }
 //------------------------------------------------------------------------------------
 static void cmdStatusFunction(void)
 {
 
+uint8_t channel;
+
 	xprintf_P( PSTR("\r\nSpymovil %s %s %s %s\r\n\0"), SP5K_MODELO, SP5K_VERSION, SP5K_REV, SP5K_DATE);
+
+	// Fecha y Hora
+	pv_cmd_rwRTC( RD_CMD );
+
+	// CONFIG
+	xprintf_P( PSTR(">Config:\r\n\0"));
+
+	switch(systemVars.debug) {
+	case DEBUG_NONE:
+		xprintf_P( PSTR("  debug: none\r\n\0") );
+		break;
+	case DEBUG_DIGITAL:
+		xprintf_P( PSTR("  debug: digital\r\n\0") );
+		break;
+	}
+
+	/* Configuracion de canales digitales */
+	for ( channel = 0; channel < NRO_DIGITAL_CHANNELS; channel++) {
+		xprintf_P(PSTR("  d%d: {%.02f p/p} (%s)\r\n\0"), channel, systemVars.d_ch_magpp[channel],systemVars.d_ch_name[channel]);
+	}
 
 }
 //------------------------------------------------------------------------------------
 static void cmdReadFunction(void)
 {
 
-	FRTOS_CMD_makeArgv();
+	CMD_makeArgv();
 
 	// EE
 	// read ee pos string
@@ -290,13 +324,95 @@ static void cmdReadFunction(void)
 static void cmdConfigFunction(void)
 {
 
+	CMD_makeArgv();
+
+	// USER
+	// config user {normal|tecnico}
+	if (!strcmp_P( strupr(argv[1]), PSTR("USER\0"))) {
+		if (!strcmp_P( strupr(argv[2]), PSTR("TECNICO\0"))) {
+			tipo_usuario = USER_TECNICO;
+			pv_snprintfP_OK();
+			return;
+		}
+			if (!strcmp_P( strupr(argv[2]), PSTR("NORMAL\0"))) {
+			tipo_usuario = USER_NORMAL;
+			pv_snprintfP_OK();
+			return;
+		}
+		pv_snprintfP_ERR();
+		return;
+	}
+
+	// DEBUG
+	// config debug {none|digital}
+	if (!strcmp_P( strupr(argv[1]), PSTR("DEBUG\0"))) {
+		if (!strcmp_P( strupr(argv[2]), PSTR("NONE\0"))) {
+			systemVars.debug = DEBUG_NONE;
+			pv_snprintfP_OK();
+		} else if (!strcmp_P( strupr(argv[2]), PSTR("DIGITAL\0"))) {
+			systemVars.debug = DEBUG_DIGITAL;
+			pv_snprintfP_OK();
+		} else {
+			pv_snprintfP_ERR();
+		}
+		return;
+	}
+
+	// DIGITAL
+	// config digital {0|1} dname magPP
+	if (!strcmp_P( strupr(argv[1]), PSTR("DIGITAL\0")) ) {
+		if ( pub_digital_config_channel( atoi(argv[2]), argv[3], argv[4] ) ) {
+			pv_snprintfP_OK();
+		} else {
+			pv_snprintfP_ERR();
+		}
+		return;
+	}
+
+	// SAVE
+	// config save
+	if (!strcmp_P( strupr(argv[1]), PSTR("SAVE\0"))) {
+		pub_save_configuration();
+		pv_snprintfP_OK();
+		return;
+	}
+
+	// DEFAULT
+	// config default
+	if (!strcmp_P( strupr(argv[1]), PSTR("DEFAULT\0"))) {
+		pub_load_defaults();
+		pv_snprintfP_OK();
+		return;
+	}
+
+	// TERMINAL
+	// config terminal {on|off}
+	if (!strcmp_P( strupr(argv[1]), PSTR("TERMINAL\0")) ) {
+		if (!strcmp_P( strupr(argv[2]), PSTR("ON\0")) ) {
+			systemVars.terminal_fixed_on = true;
+			pv_snprintfP_OK();
+			return;
+		}
+		if (!strcmp_P( strupr(argv[2]), PSTR("OFF\0")) ) {
+			systemVars.terminal_fixed_on = false;
+			pv_snprintfP_OK();
+			return;
+		}
+		pv_snprintfP_ERR();
+		return;
+	}
+
+	// Opcion no reconocida
+	pv_snprintfP_ERR();
+	return;
+
 
 }
 //------------------------------------------------------------------------------------
 static void cmdWriteFunction(void)
 {
 
-	FRTOS_CMD_makeArgv();
+	CMD_makeArgv();
 
 	// EE
 	// write ee pos string
@@ -312,19 +428,24 @@ static void cmdWriteFunction(void)
 		return;
 	}
 
-	// KALED
-	// write kaled (on|off)
-	if (!strcmp_P( strupr(argv[1]), PSTR("LED\0")) ) {
+	// LEDS
+	// write leds (on|off)
+	if (!strcmp_P( strupr(argv[1]), PSTR("LEDS\0")) ) {
 		if (!strcmp_P( strupr(argv[2]), PSTR("ON\0")) ) {
-			IO_set_led_KA_logicBoard();
-			IO_set_LED_KA_analogBoard();
+			IO_led_KA_analogBoard_on();
+			IO_led_KA_logicBoard_on();
+			IO_led_MODEM_analogBoard_on();
+			pv_snprintfP_OK();
 			return;
 		}
 		if (!strcmp_P( strupr(argv[2]), PSTR("OFF\0")) ) {
-			IO_clear_led_KA_logicBoard();
-			IO_clear_LED_KA_analogBoard();
+			IO_led_KA_analogBoard_off();
+			IO_led_KA_logicBoard_off();
+			IO_led_MODEM_analogBoard_off();
+			pv_snprintfP_OK();
 			return;
 		}
+		pv_snprintfP_ERR();
 		return;
 	}
 

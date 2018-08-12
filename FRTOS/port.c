@@ -440,7 +440,6 @@ static void prvSetupTimerInterrupt( void )
 
 		// Enable interrups por compare on match
 		TIMSK2 |= (_BV(OCIE2A));	//sbi(TIMSK2, OCIE2A);
-		DDRD |= (_BV(6));			//sbi(DDRD, 6);
 }
 /*-----------------------------------------------------------*/
 
@@ -454,7 +453,6 @@ static void prvSetupTimerInterrupt( void )
 		ISR(TIMER2_COMPA_vect, ISR_NAKED);
 		ISR(TIMER2_COMPA_vect)
 		{
-			PORTD ^= 1 << 6;
 			vPortYieldFromTick();
 			asm volatile ( "reti" );
 		}
